@@ -8,8 +8,9 @@ class Kohana_Charts {
 
 	protected $config = array();
 	
-	protected $chart_types = array('line');
-
+	protected $chart_types = array('line','sparkline');
+	protected $available_axis = array('x','t','y','r');
+	
 	/**
 	 * Creates a new Charts object.
 	 *
@@ -80,10 +81,13 @@ class Kohana_Charts {
 		return $this;
 	}	
 
-	private function chart_type()
+	private function get_type()
 	{
 		switch ($this->config['type'])
 		{
+			case 'sparkline':
+				return 'ls';
+			break;
 			case 'line':
 			default:
 				return 'lc';
@@ -91,36 +95,80 @@ class Kohana_Charts {
 		}
 	}
 
-	public function fill()
+	private function get_series_color()
 	{
+		return implode(',',$this->config['series_color']);
+	}
+	
+	private function get_background_fill()
+	{
+		return implode('|',$this->config['background_fill']);
+	}
+	
+	private function get_line_style()
+	{
+		return implode('|',$this->config['line_style']);
+	}
+	
+	// TODO Would be nice to make this easier to edit
+	public function background_fill(array $background_fill)
+	{
+		$this->config['background_fill'] = $background_fill;
 		return $this;
 	}
 	
-	public function line()
+	public function series_color(array $series_color)
 	{
+		$this->config['series_color'] = $series_color;
 		return $this;
 	}
 
+	public function line_style(array $line_style)
+	{
+		$this->config['line_style'] = $line_style;
+		return $this;
+	}
+	
+	public function show_axis($axis)
+	{
+		$axis_array = explode(',',$axis);
+		
+		foreach($axis_array as $ax)
+		{
+			// If one of the axis is wrong - it all goes to hell
+			if ( ! in_array($ax, $this->available_axis))
+			{
+				return $this;
+			}
+		}
+		echo 'b';
+		$this->config['visible_axis'] = $axis;
+		
+		return $this;
+	}
+	
 	public function render()//array $x_axis, array $y_axis, array $line_data)
 	{
 		//http://chart.apis.google.com/chart?cht=lc&chxl=0:|2010-03-11|2010-04-10|2010-05-10|2010-06-09|1:|0|34|42|56|85|170&chm=B,EBF5FB,0,0,0&chco=008Cd6&chls=3,1,0&chg=8.3,20,1,4&chd=s:FPOPOPXMKRQYaTSafcWVQPLRJRRV9ghyfdeSVaUVZWXULjfXeSQdaffgaMbgeedXPObVWhaKykmpbbVbhbZwhciup1&chxt=x,y&chs=920x200
 		
+		// Google charts api
 		$image = 'http://chart.apis.google.com/chart';
 		
-		// Chart typeLine chart
-		$image .= '?cht='.$this->chart_type();
+		// Chart type
+		$image .= '?cht='.$this->get_type();
 		
+		// TODO
 		// X and Y axis (&chxl=0:|2010-03-11|2010-04-10|2010-05-10|2010-06-09|1:|0|34|42|56|85|170)
-		$image .= '&chxl=0:|'.implode('|',$x_axis).'|1:|'.implode('|',$y_axis);
+		//$image .= '&chxl=0:|'.implode('|',$x_axis).'|1:|'.implode('|',$y_axis);
 		
-		// Line graph fill
-		$image .= '&chm=B,EBF5FB,0,0,0';
+		// Background fill
+		$image .= '&chm='.$this->get_background_fill();
 		
-		// Line colour
-		$image .= '&chco=008Cd6';
+		// Series color (its the line color)
+		$image .= '&chco='.$this->get_series_color();
 		
 		// Line style (<line_1_thickness>,<dash_length>,<space_length>)
-		$image .= '&chls=3,1,0';
+		$image .= '&chls='.$this->get_line_style();
 		
 		// Grid lines
 		$image .= '&chg=8.3,20,1,4';
@@ -129,14 +177,13 @@ class Kohana_Charts {
 		//&chd=s:FPOPOPXMKRQYaTSafcWVQPLRJRRV9ghyfdeSVaUVZWXULjfXeSQdaffgaMbgeedXPObVWhaKykmpbbVbhbZwhciup1
 		// TODO would be nice to convert it to a serialised version: http://code.google.com/apis/chart/docs/data_formats.html#encoding_data
 		//$image .= '&chd=t:'.implode(',',$line_data);
-		$image .= '&chd=s:'.self::encoder($line_data);
+		//$image .= '&chd=s:'.self::encoder($line_data);
 		
 		// Visible axes
-		$image .= '&chxt=x,y';
+		$image .= '&chxt='.$this->config['visible_axis'];
 		
 		// Chart size
 		$image .= '&chs=920x200';
-		
 		return $image;
 	}
 
