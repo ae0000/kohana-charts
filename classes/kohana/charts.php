@@ -17,9 +17,9 @@ class Kohana_Charts {
 	 * @param   array  configuration
 	 * @return  Charts
 	 */
-	public static function factory(array $config = array())
+	public static function factory()
 	{
-		return new Charts($config);
+		return new Charts();
 	}
 
 	/**
@@ -28,10 +28,10 @@ class Kohana_Charts {
 	 * @param   array  configuration
 	 * @return  void
 	 */
-	public function __construct(array $config = array())
+	public function __construct($group='default')
 	{
 		// Overwrite system defaults with application defaults
-		$this->config = $this->config_group() + $this->config;
+		$this->config = $this->config_group($group) + $this->config;
 	}
 
 	/**
@@ -44,8 +44,8 @@ class Kohana_Charts {
 	public function config_group($group = 'default')
 	{
 		// Load the pagination config file
-		$config_file = Kohana::config('pagination');
-
+		$config_file = Kohana::config('charts');
+		
 		// Initialize the $config array
 		$config['group'] = (string) $group;
 
@@ -97,19 +97,47 @@ class Kohana_Charts {
 
 	private function get_series_color()
 	{
-		return implode(',',$this->config['series_color']);
+		return $this->config['series_color'];
 	}
 	
 	private function get_background_fill()
 	{
-		return implode('|',$this->config['background_fill']);
+		return implode(',',$this->config['background_fill']);
 	}
 	
 	private function get_line_style()
 	{
-		return implode('|',$this->config['line_style']);
+		return implode(',',$this->config['line_style']);
 	}
+
+        private function get_data()
+        {
+                return $this->config['data'];
+        }
 	
+        /**
+         * We are expecting an array containing 'value' and 'timestamp'
+         * ie. $data = array(array('value'=>123, 'timestamp=>'2010-07-07'),array('value'=>44,'timestamp'=>'2010-07-07'));
+         */
+        public function data($data)
+        {
+                //var_dump($data);
+                // Serialise the data
+             	if (is_array($data))
+                {
+			$make	= function($data) {return $data['value'];};
+			$stat	= array_map($make, $data);
+			$this->config['data'] = self::encoder($stat);
+		}
+                else
+                {
+                        $this->config['data'] = '';
+			//$result[$key]['statistics']	= '';
+		}
+
+                //$this->config['data'] = $data;
+        }
+
 	// TODO Would be nice to make this easier to edit
 	public function background_fill(array $background_fill)
 	{
@@ -141,7 +169,7 @@ class Kohana_Charts {
 				return $this;
 			}
 		}
-		echo 'b';
+
 		$this->config['visible_axis'] = $axis;
 		
 		return $this;
@@ -173,12 +201,9 @@ class Kohana_Charts {
 		// Grid lines
 		$image .= '&chg=8.3,20,1,4';
 		
-		// Data
-		//&chd=s:FPOPOPXMKRQYaTSafcWVQPLRJRRV9ghyfdeSVaUVZWXULjfXeSQdaffgaMbgeedXPObVWhaKykmpbbVbhbZwhciup1
-		// TODO would be nice to convert it to a serialised version: http://code.google.com/apis/chart/docs/data_formats.html#encoding_data
-		//$image .= '&chd=t:'.implode(',',$line_data);
-		//$image .= '&chd=s:'.self::encoder($line_data);
-		
+		// Data (serialised)
+		$image .= '&chd=s:'.$this->config['data'];
+
 		// Visible axes
 		$image .= '&chxt='.$this->config['visible_axis'];
 		
@@ -186,8 +211,6 @@ class Kohana_Charts {
 		$image .= '&chs=920x200';
 		return $image;
 	}
-
-
 
 
 	/**
@@ -200,4 +223,30 @@ class Kohana_Charts {
 		return $this->render();
 	}
 
+        /**
+         * Serialise the data
+         * See: http://code.google.com/apis/chart/docs/data_formats.html#encoding_data
+         */
+        public static function encoder($data)
+	{
+		$simple_encoding = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+		$encoded_data = '';
+		$max_val = max($data);
+		
+		foreach($data as $current_val)
+		{
+			if (is_numeric($current_val) AND (float)$current_val >= 0)
+			{
+				$str_pos = round((strlen($simple_encoding) - 1) * (float)$current_val / $max_val);
+				
+				$encoded_data .= substr($simple_encoding, $str_pos, 1);
+			}
+			else
+			{
+				$encoded_data .= '_';
+			}
+		}
+		return $encoded_data;
+	} 
+               
 }
