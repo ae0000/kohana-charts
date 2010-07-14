@@ -2,7 +2,7 @@
 /**
  * Creates google charts links.
  *
- * @author     Andrew Edwards
+ * @author	   Andrew Edwards
  */
 class Kohana_Charts {
 
@@ -14,8 +14,8 @@ class Kohana_Charts {
 	/**
 	 * Creates a new Charts object.
 	 *
-	 * @param   array  configuration
-	 * @return  Charts
+	 * @param	array  configuration
+	 * @return	Charts
 	 */
 	public static function factory()
 	{
@@ -25,8 +25,8 @@ class Kohana_Charts {
 	/**
 	 * Charts constructor. Setup config
 	 *
-	 * @param   array  configuration
-	 * @return  void
+	 * @param	array  configuration
+	 * @return	void
 	 */
 	public function __construct($group='default')
 	{
@@ -38,8 +38,8 @@ class Kohana_Charts {
 	 * Retrieves a charts config group from the config file. One config group can
 	 * refer to another as its parent, which will be recursively loaded.
 	 *
-	 * @param   string  charts config group; "default" if none given
-	 * @return  array   config settings
+	 * @param	string	charts config group; "default" if none given
+	 * @return	array	config settings
 	 */
 	public function config_group($group = 'default')
 	{
@@ -110,33 +110,48 @@ class Kohana_Charts {
 		return implode(',',$this->config['line_style']);
 	}
 
-        private function get_data()
-        {
-                return $this->config['data'];
-        }
+	private function get_data()
+	{
+		return $this->config['data'];
+	}
 	
-        /**
-         * We are expecting an array containing 'value' and 'timestamp'
-         * ie. $data = array(array('value'=>123, 'timestamp=>'2010-07-07'),array('value'=>44,'timestamp'=>'2010-07-07'));
-         */
-        public function data($data)
-        {
-                //var_dump($data);
-                // Serialise the data
-             	if (is_array($data))
-                {
-			$make	= function($data) {return $data['value'];};
-			$stat	= array_map($make, $data);
-			$this->config['data'] = self::encoder($stat);
-		}
-                else
-                {
-                        $this->config['data'] = '';
-			//$result[$key]['statistics']	= '';
-		}
+	/**
+	 * We are expecting an array containing 'value' and 'timestamp'
+	 * ie. $data = array(array('value'=>123, 'timestamp=>'2010-07-07'),array('value'=>44,'timestamp'=>'2010-07-07'));
+	 */
+	public function data($data)
+	{
+		// Serialise the data
+		if (is_array($data))
+		{
+			// How many intervals will we use?
+			$intervals = min(count($data), $this->config['interval_max']);
+			
+			// Dive the data into time segments,
+			// Average the results of each segment
+			$func_new_array = function() { return array(); };
+			$segments = array_map($func_new_array, range(0,$intervals));
+			$start = strtotime($data[0]['timestamp']);
+			$stop = strtotime($data[count($data) -1]['timestamp']);
+			$segment = round(($stop - $start) / $intervals);
 
-                //$this->config['data'] = $data;
-        }
+			foreach ($data as $statistic)
+			{
+				// Get the stats time, on the timeline and add its value to the right segment
+				$stat_time = strtotime($statistic['timestamp']) - $start;
+				$stat_segment = round($stat_time / $segment);
+				$segments[$stat_segment][] = $statistic['value'];
+			}
+
+			// Now average the results of each segment, as the new set of data
+			$func_average = function($array) { return (empty($array))? 0 : array_sum($array) / count($array); };
+			$this->config['data'] = self::encoder(array_map($func_average, $segments));
+		}
+		else
+		{
+			$this->config['data'] = '';
+		}
+	}
 
 	// TODO Would be nice to make this easier to edit
 	public function background_fill(array $background_fill)
@@ -216,23 +231,23 @@ class Kohana_Charts {
 	/**
 	 * Renders the chart link.
 	 *
-	 * @return  string  chart url
+	 * @return	string	chart url
 	 */
 	public function __toString()
 	{
 		return $this->render();
 	}
 
-        /**
-         * Serialise the data
-         * See: http://code.google.com/apis/chart/docs/data_formats.html#encoding_data
-         */
-        public static function encoder($data)
+	/**
+	 * Serialise the data
+	 * See: http://code.google.com/apis/chart/docs/data_formats.html#encoding_data
+	 */
+	public static function encoder($data)
 	{
 		$simple_encoding = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
 		$encoded_data = '';
 		$max_val = max($data);
-		
+	
 		foreach($data as $current_val)
 		{
 			if (is_numeric($current_val) AND (float)$current_val >= 0)
@@ -248,5 +263,5 @@ class Kohana_Charts {
 		}
 		return $encoded_data;
 	} 
-               
+			   
 }
