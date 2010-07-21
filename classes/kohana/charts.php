@@ -122,7 +122,7 @@ class Kohana_Charts {
 	public function data($data)
 	{
 		// Serialise the data
-		if (is_array($data))
+		if (is_array($data) AND ! empty($data))
 		{
 			// How many intervals will we use?
 			$intervals = min(count($data), $this->config['interval_max']);
