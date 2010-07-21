@@ -139,7 +139,14 @@ class Kohana_Charts {
 			{
 				// Get the stats time, on the timeline and add its value to the right segment
 				$stat_time = strtotime($statistic['timestamp']) - $start;
-				$stat_segment = round($stat_time / $segment);
+				if ($stat_time == 0 AND $segment == 0)
+				{
+					$stat_segment = 0;
+				}
+				else
+				{
+					$stat_segment = round($stat_time / $segment);
+				}
 				$segments[$stat_segment][] = $statistic['value'];
 			}
 
